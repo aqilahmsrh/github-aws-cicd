@@ -5,15 +5,15 @@ on:
     branches:
       - main
       - DEV
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Repo Tag Name (Ex.: yyyymmdd-hhmmss)'
-        type: string
-        required: true
+#   workflow_dispatch:
+#     inputs:
+#       version:
+#         description: 'Repo Tag Name (Ex.: yyyymmdd-hhmmss)'
+#         type: string
+#         required: true
 
 jobs:
-  Build:
+  Build_Upload_Deploy:
     permissions:
       actions: write
       contents: write
@@ -26,16 +26,16 @@ jobs:
         id: generate_tag_version
         run: |
           TAG=$(date +%Y%m%d)-$(date +%H%M%S)
-          echo "tag=$TAG" >> $GITHUB_ENV
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Tag Version: $TAG" >> $GITHUB_STEP_SUMMARY
 
       - name: 'Create Zip File'
         id: create_package
         run: |
           PACKAGE_NAME="${{ steps.generate_tag_version.outputs.tag }}.zip"
-          echo "package_name=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           zip -r $PACKAGE_NAME .
-          
+
       - name: 'Configure AWS S3 Credentials'
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -46,30 +46,17 @@ jobs:
       - name: 'Upload to S3 Bucket'
         run: aws s3 cp ${{ steps.create_package.outputs.package_name }} s3://${{ secrets.AWS_S3_BUCKET_NAME }}
 
-  Approval:
-    needs: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Manual Approval'
-        id: approval
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data: pullRequest } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Deployment Approval',
-              head: context.sha,
-              base: 'main',
-              body: 'Please review and approve the deployment.',
-            });
-            console.log(`Pull request number: ${pullRequest.number}`);
-            core.setOutput('pull_request_number', pullRequest.number);
+#       - name: 'Check Git Tag'
+#         if: github.event_name == 'workflow_dispatch'
+#         uses: actions/github-script@v6
+#         with:
+#           script: |
+#             const refResponse = await github.rest.git.getRef({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#               ref: 'tags/${{ inputs.version }}'
+#             });
 
-  Deploy:
-    needs: [Approval]
-    runs-on: ubuntu-latest
-    steps:
       - name: 'Configure AWS Lambda Credentials'
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -88,3 +75,10 @@ jobs:
       - name: 'Update Source Code'
         run: |
           echo "Deploy Version: ${{ steps.generate_tag_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "Update Lambda Function with ${{ steps.generate_tag_version.outputs.tag }}.zip file" >> $GITHUB_STEP_SUMMARY
+          aws lambda update-function-code \
+            --function-name=${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --s3-bucket=${{ secrets.AWS_S3_BUCKET_NAME }} \
+            --s3-key=${{ steps.generate_tag_version.outputs.tag }}.zip \
+            --cli-read-timeout 60 \
+            --cli-connect-timeout 60
