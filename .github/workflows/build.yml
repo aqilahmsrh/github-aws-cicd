@@ -35,11 +35,7 @@ jobs:
           PACKAGE_NAME="${{ steps.generate_tag_version.outputs.tag }}.zip"
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_ENV
           zip -r $PACKAGE_NAME .
-
-  Upload:
-    needs: Build
-    runs-on: ubuntu-latest
-    steps:
+          
       - name: 'Configure AWS S3 Credentials'
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
