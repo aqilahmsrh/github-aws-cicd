@@ -50,7 +50,7 @@ jobs:
         if: ${{ success() }}
         uses: aws-actions/aws-codebuild-run-build@v1.0.3
         with:
-          project-name: gitactions
+          project-name: lambda-build-999
 
 #       - name: 'Check Git Tag'
 #         if: github.event_name == 'workflow_dispatch'
