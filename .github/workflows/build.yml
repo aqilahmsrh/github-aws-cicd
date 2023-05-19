@@ -5,6 +5,13 @@ on:
     branches:
       - main
       - DEV
+  pull_request: 
+    branches: 
+      - main
+      - DEV
+
+  workflow_dispatch:
+
 #   workflow_dispatch:
 #     inputs:
 #       version:
@@ -45,7 +52,27 @@ jobs:
 
       - name: 'Upload to S3 Bucket'
         run: aws s3 cp ${{ steps.create_package.outputs.package_name }} s3://${{ secrets.AWS_S3_BUCKET_NAME }}
-      
+  
+  Deploy:
+    name: Deploy to lambda function
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Configure AWS Lambda Credentials'
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_LAMBDA_REGION }}
+
+      - name: 'Check S3 Bucket'
+        run: |
+          aws s3api wait object-exists \
+            --bucket ${{ secrets.AWS_S3_BUCKET_NAME }} \
+            --key ${{ steps.generate_tag_version.outputs.tag }}.zip \
+            --cli-read-timeout 60 \
+            --cli-connect-timeout 60
+            
       - name: AWS CodeBuild
         if: ${{ success() }}
         uses: aws-actions/aws-codebuild-run-build@v1.0.3
