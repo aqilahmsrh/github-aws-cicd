@@ -1,0 +1,21 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - echo "Installing dependencies..."
+      - mkdir build
+      - pip install -r requirements.txt -t build
+      - echo "Zipping deployment package..."
+      - cp -R buildpsec.yml package.json requirements.txt package-lock.json src app build/
+      - cd build
+      - zip -r ../build.zip
+  build:
+    commands:
+      - npm run build
+  post_build:
+    commands:
+      - echo "Updating lambda Function..."
+      - aws lambda update-function-code --function-name lambda-yt-777 --zip-file fileb://build.zip
+      - echo "DONE!!"
