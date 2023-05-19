@@ -8,7 +8,7 @@ phases:
       - mkdir build
       - pip install -r requirements.txt -t build
       - echo "Zipping deployment package..."
-      - cp -R buildpsec.yml package.json requirements.txt package-lock.json src app build/
+      - cp -R lambda_function.py buildpsec.yml package.json requirements.txt package-lock.json src app build/
       - cd build
       - zip -r ../build.zip
   build:
