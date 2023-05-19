@@ -39,12 +39,18 @@ jobs:
       - name: 'Configure AWS S3 Credentials'
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_BUCKET_USER_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_BUCKET_USER_AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_S3_BUCKET_REGION }}
 
       - name: 'Upload to S3 Bucket'
         run: aws s3 cp ${{ steps.create_package.outputs.package_name }} s3://${{ secrets.AWS_S3_BUCKET_NAME }}
+      
+      - name: AWS CodeBuild
+        if: ${{ success() }}
+        uses: aws-actions/aws-codebuild-run-build@v1.0.3
+        with:
+          project-name: gitactions
 
 #       - name: 'Check Git Tag'
 #         if: github.event_name == 'workflow_dispatch'
@@ -57,28 +63,28 @@ jobs:
 #               ref: 'tags/${{ inputs.version }}'
 #             });
 
-      - name: 'Configure AWS Lambda Credentials'
-        uses: aws-actions/configure-aws-credentials@v1-node16
-        with:
-          aws-access-key-id: ${{ secrets.AWS_LAMBDA_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_LAMBDA_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_LAMBDA_REGION }}
+#       - name: 'Configure AWS Lambda Credentials'
+#         uses: aws-actions/configure-aws-credentials@v1-node16
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_LAMBDA_USER_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_LAMBDA_USER_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ secrets.AWS_LAMBDA_REGION }}
 
-      - name: 'Check S3 Bucket'
-        run: |
-          aws s3api wait object-exists \
-            --bucket ${{ secrets.AWS_S3_BUCKET_NAME }} \
-            --key ${{ steps.generate_tag_version.outputs.tag }}.zip \
-            --cli-read-timeout 60 \
-            --cli-connect-timeout 60
+#       - name: 'Check S3 Bucket'
+#         run: |
+#           aws s3api wait object-exists \
+#             --bucket ${{ secrets.AWS_S3_BUCKET_NAME }} \
+#             --key ${{ steps.generate_tag_version.outputs.tag }}.zip \
+#             --cli-read-timeout 60 \
+#             --cli-connect-timeout 60
 
-      - name: 'Update Source Code'
-        run: |
-          echo "Deploy Version: ${{ steps.generate_tag_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "Update Lambda Function with ${{ steps.generate_tag_version.outputs.tag }}.zip file" >> $GITHUB_STEP_SUMMARY
-          aws lambda update-function-code \
-            --function-name=${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
-            --s3-bucket=${{ secrets.AWS_S3_BUCKET_NAME }} \
-            --s3-key=${{ steps.generate_tag_version.outputs.tag }}.zip \
-            --cli-read-timeout 60 \
-            --cli-connect-timeout 60
+#       - name: 'Update Source Code'
+#         run: |
+#           echo "Deploy Version: ${{ steps.generate_tag_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+#           echo "Update Lambda Function with ${{ steps.generate_tag_version.outputs.tag }}.zip file" >> $GITHUB_STEP_SUMMARY
+#           aws lambda update-function-code \
+#             --function-name=${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+#             --s3-bucket=${{ secrets.AWS_S3_BUCKET_NAME }} \
+#             --s3-key=${{ steps.generate_tag_version.outputs.tag }}.zip \
+#             --cli-read-timeout 60 \
+#             --cli-connect-timeout 60
