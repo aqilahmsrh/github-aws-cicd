@@ -56,6 +56,7 @@ jobs:
   Deploy:
     name: Deploy to lambda function
     if: github.event_name == 'pull_request'
+    needs: Build_Upload_Deploy
     runs-on: ubuntu-latest
     steps:
       - name: 'Configure AWS Lambda Credentials'
