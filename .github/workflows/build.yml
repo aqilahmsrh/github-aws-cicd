@@ -2,15 +2,20 @@ name: 'Build, Upload, and Deploy -'
 
 on:
   push:
-    branches:
-      - main
-      - DEV
-  pull_request: 
-    branches: 
-      - main
-      - DEV
+    tags:
+      - '*'
+      
+# on:
+#   push:
+#     branches:
+#       - main
+#       - aqil
+#   pull_request: 
+#     branches: 
+#       - main
+#       - aqil
 
-  workflow_dispatch:
+#   workflow_dispatch:
 
 #   workflow_dispatch:
 #     inputs:
@@ -36,49 +41,41 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Tag Version: $TAG" >> $GITHUB_STEP_SUMMARY
 
-      - name: 'Create Zip File'
-        id: create_package
-        run: |
-          PACKAGE_NAME="${{ steps.generate_tag_version.outputs.tag }}.zip"
-          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
-          zip -r $PACKAGE_NAME .
+#       - name: 'Create Zip File'
+#         id: create_package
+#         run: |
+#           PACKAGE_NAME="${{ steps.generate_tag_version.outputs.tag }}.zip"
+#           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+#           zip -r $PACKAGE_NAME .
 
-      - name: 'Configure AWS S3 Credentials'
-        uses: aws-actions/configure-aws-credentials@v1-node16
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_S3_BUCKET_REGION }}
+#       - name: 'Configure AWS S3 Credentials'
+#         uses: aws-actions/configure-aws-credentials@v1-node16
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ secrets.AWS_S3_BUCKET_REGION }}
 
-      - name: 'Upload to S3 Bucket'
-        run: aws s3 cp ${{ steps.create_package.outputs.package_name }} s3://${{ secrets.AWS_S3_BUCKET_NAME }}
+#       - name: 'Upload to S3 Bucket'
+#         run: aws s3 cp ${{ steps.create_package.outputs.package_name }} s3://${{ secrets.AWS_S3_BUCKET_NAME }}
   
-  Deploy:
-    name: Deploy to lambda function
-    if: github.event_name == 'pull_request'
-    needs: Build_Upload_Deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Configure AWS Lambda Credentials'
-        uses: aws-actions/configure-aws-credentials@v1-node16
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_LAMBDA_REGION }}
-
-      - name: 'Check S3 Bucket'
-        run: |
-          aws s3api wait object-exists \
-            --bucket ${{ secrets.AWS_S3_BUCKET_NAME }} \
-            --key ${{ steps.generate_tag_version.outputs.tag }}.zip \
-            --cli-read-timeout 60 \
-            --cli-connect-timeout 60
+#   Deploy:
+#     name: Deploy to lambda function
+#     if: github.event_name == 'pull_request'
+#     needs: Build_Upload_Deploy
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: 'Configure AWS Lambda Credentials'
+#         uses: aws-actions/configure-aws-credentials@v1-node16
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ secrets.AWS_LAMBDA_REGION }}
             
-      - name: AWS CodeBuild
-        if: ${{ success() }}
-        uses: aws-actions/aws-codebuild-run-build@v1.0.3
-        with:
-          project-name: lambda-build-999
+#       - name: AWS CodeBuild
+#         if: ${{ success() }}
+#         uses: aws-actions/aws-codebuild-run-build@v1.0.3
+#         with:
+#           project-name: lambda-build-999
 
 #       - name: 'Check Git Tag'
 #         if: github.event_name == 'workflow_dispatch'
